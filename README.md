@@ -1,4 +1,7 @@
 # AI-Powered Communication Assistant (Hackathon Demo)
+visualisation dashboard
+
+ <img width="1920" height="2257" alt="127 0 0 1_5000-AI Communication Assistant - Demo-fpscreenshot" src="https://github.com/user-attachments/assets/c5874b0d-ef4f-42fe-acea-65a2eae3b4bf" />
 
 This is a lightweight, end-to-end demo of the **AI-Powered Communication Assistant** tailored for a 4-day hackathon. It uses a local CSV of sample support emails (provided) instead of live IMAP access so you can run it locally without giving mail credentials.
 
@@ -47,7 +50,3 @@ This is a lightweight, end-to-end demo of the **AI-Powered Communication Assista
    python app.py
    ```
 5. Open browser at `http://127.0.0.1:5000` and click **Import CSV** to load demo emails.
-
-6. visualisation dashboard
-
- <img width="1920" height="2257" alt="127 0 0 1_5000-AI Communication Assistant - Demo-fpscreenshot" src="https://github.com/user-attachments/assets/c5874b0d-ef4f-42fe-acea-65a2eae3b4bf" />
