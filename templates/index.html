@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>AI Communication Assistant - Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body { padding:20px; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI Communication Assistant - Demo</h1>
+      <p>
+        <button id="importBtn" class="btn btn-primary">Import CSV</button>
+        <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+      </p>
+      <div class="row">
+        <div class="col-md-8">
+          <table class="table table-sm table-striped" id="emailsTable">
+            <thead><tr><th>Id</th><th>Sender</th><th>Subject</th><th>Sentiment</th><th>Priority</th><th>Received</th><th>Actions</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="col-md-4">
+          <h5>Analytics</h5>
+          <canvas id="chartSentiment" width="300" height="200"></canvas>
+          <p id="statsSummary"></p>
+        </div>
+      </div>
+
+      <hr/>
+      <div id="detail" style="display:none;">
+        <h3>Email detail</h3>
+        <div id="detailBody"></div>
+        <h5>Extracted:</h5>
+        <pre id="extracted"></pre>
+        <h5>AI-generated Reply (editable)</h5>
+        <textarea id="replyBox" class="form-control" rows="6"></textarea>
+        <p class="mt-2">
+          <button id="generateBtn" class="btn btn-success">Generate Reply</button>
+          <button id="saveReply" class="btn btn-primary">Save Reply</button>
+          <button id="resolveBtn" class="btn btn-warning">Mark Resolved</button>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      let selectedId = null;
+      async function fetchEmails(){
+        const res = await fetch("/emails");
+        const data = await res.json();
+        const tbody = document.querySelector("#emailsTable tbody");
+        tbody.innerHTML = "";
+        data.forEach(e=>{
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${e.id}</td><td>${e.sender}</td><td>${e.subject}</td><td>${e.sentiment}</td><td>${e.priority}</td><td>${e.received_at}</td>`+
+          `<td><button class="btn btn-sm btn-info" onclick="showDetail(${e.id})">Open</button></td>`;
+          tbody.appendChild(tr);
+        });
+        updateStats();
+      }
+
+      async function importCSV(){
+        const res = await fetch("/import_csv",{method:"POST"});
+        const j = await res.json();
+        if(j.error) alert("Import failed: "+j.error);
+        else alert("Imported: "+j.imported);
+        fetchEmails();
+      }
+
+      async function showDetail(id){
+        selectedId = id;
+        const res = await fetch("/emails"); const data = await res.json();
+        const e = data.find(x=>x.id===id);
+        if(!e) return;
+        document.getElementById("detail").style.display = "block";
+        document.getElementById("detailBody").innerHTML = `<h5>${e.subject}</h5><p><strong>From:</strong> ${e.sender} <br/><strong>Received:</strong> ${e.received_at}</p><pre>${e.body}</pre>`;
+        document.getElementById("extracted").innerText = e.extracted;
+        document.getElementById("replyBox").value = e.reply || "";
+      }
+
+      async function generateReply(){
+        if(!selectedId) return alert("Select email first");
+        const res = await fetch("/generate_reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedId})});
+        const j = await res.json();
+        if(j.reply) document.getElementById("replyBox").value = j.reply;
+        else alert("Failed to generate reply");
+      }
+
+      async function saveReply(){
+        const reply = document.getElementById("replyBox").value;
+        await fetch("/update_reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedId,reply})});
+        alert("Saved");
+        fetchEmails();
+      }
+
+      async function markResolved(){
+        await fetch("/mark_resolved",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selectedId})});
+        alert("Marked resolved");
+        fetchEmails();
+      }
+
+      async function updateStats(){
+        const res = await fetch("/stats"); const s = await res.json();
+        document.getElementById("statsSummary").innerText = `Total: ${s.total}  Resolved: ${s.resolved}  Pending: ${s.pending}`;
+        // chart
+        const ctx = document.getElementById('chartSentiment').getContext('2d');
+        const labels = Object.keys(s.by_sentiment || {});
+        const data = Object.values(s.by_sentiment || {});
+        if(window.myChart) window.myChart.destroy();
+        window.myChart = new Chart(ctx,{type:'doughnut',data:{labels, datasets:[{data}] } });
+      }
+
+      document.getElementById("importBtn").addEventListener("click",importCSV);
+      document.getElementById("refreshBtn").addEventListener("click",fetchEmails);
+      document.getElementById("generateBtn").addEventListener("click",generateReply);
+      document.getElementById("saveReply").addEventListener("click",saveReply);
+      document.getElementById("resolveBtn").addEventListener("click",markResolved);
+
+      fetchEmails();
+    </script>
+  </body>
+</html>
